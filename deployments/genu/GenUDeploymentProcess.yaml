@@ -7,25 +7,17 @@ Metadata:
       - Label:
           default: "GenU Deployment Parameters"
         Parameters:
-          - Environment
           - NotificationEmailAddress
           - ModelRegion
-          - RAGEnabled
           - SelfSignUp
           - AllowedSignUpEmailDomains
           - AllowedIpV4AddressRanges
           - AllowedIpV6AddressRanges
 
 Parameters:
-  Environment:
-    Type: String
-    Default: dev
-    AllowedValues: [dev, staging, prod]
-    Description: Environment name to use for deployment
-  
   NotificationEmailAddress:
     Type: String
-    Description: Email address to receive deployment notifications
+    Description: 'Email address to receive deployment notifications (test@example.co.jp)'
     AllowedPattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
     ConstraintDescription: Must be a valid email address
   
@@ -34,12 +26,6 @@ Parameters:
     Default: us-east-1
     AllowedValues: [us-east-1, us-west-2, ap-northeast-1]
     Description: AWS region for Bedrock models
-  
-  RAGEnabled:
-    Type: String
-    AllowedValues: [true, false]
-    Default: false
-    Description: Enable RAG capabilities with Knowledge Base
   
   SelfSignUp:
     Type: String
@@ -50,12 +36,12 @@ Parameters:
   AllowedSignUpEmailDomains:
     Type: String
     Default: ""
-    Description: Allowed email domains for signup (comma separated)
+    Description: Allowed email domains for signup (example.co.jp)
   
   AllowedIpV4AddressRanges:
     Type: String
     Default: ""
-    Description: Allowed IPv4 address ranges for access
+    Description: 'Allowed IPv4 address ranges for access (10.0.0.100/32, 192.168.0.0/24). Please check your addrress next url : https://checkip.amazonaws.com/'
   
   AllowedIpV6AddressRanges:
     Type: String
@@ -135,11 +121,11 @@ Resources:
         PrivilegedMode: false
         EnvironmentVariables:
           - Name: Environment
-            Value: !Ref Environment
+            Value: dev
           - Name: ModelRegion
             Value: !Ref ModelRegion
           - Name: RAGEnabled
-            Value: !Ref RAGEnabled
+            Value: true
           - Name: SelfSignUp
             Value: !Ref SelfSignUp
           - Name: AllowedSignUpEmailDomains
@@ -169,6 +155,10 @@ Resources:
             pre_build:
               commands:
                 - cd $CODEBUILD_SRC_DIR/generative-ai-use-cases
+
+                # Change Kendra Edition from DEVELOPER_EDITION to ENTERPRISE_EDITION
+                sed -i.bak "s/edition: 'DEVELOPER_EDITION',/edition: 'ENTERPRISE_EDITION',/g" packages/cdk/lib/construct/rag.ts
+
                 - cp packages/cdk/parameter.ts packages/cdk/parameter.ts.backup
                 
                 # Create and run the parameter update script
@@ -179,6 +169,7 @@ Resources:
                   const envName = process.env.Environment;
                   const params = {
                     modelRegion: process.env.ModelRegion,
+                    ragEnabled: process.env.RAGEnabled === 'true',
                     ragKnowledgeBaseEnabled: process.env.RAGEnabled === 'true',
                     selfSignUpEnabled: process.env.SelfSignUp === 'true',
                     allowedSignUpEmailDomains: process.env.AllowedSignUpEmailDomains ? process.env.AllowedSignUpEmailDomains.split(',').map(d => d.trim()) : null,
