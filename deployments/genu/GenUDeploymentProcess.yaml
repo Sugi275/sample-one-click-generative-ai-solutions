@@ -157,7 +157,7 @@ Resources:
                 - cd $CODEBUILD_SRC_DIR/generative-ai-use-cases
 
                 # Change Kendra Edition from DEVELOPER_EDITION to ENTERPRISE_EDITION
-                sed -i.bak "s/edition: 'DEVELOPER_EDITION',/edition: 'ENTERPRISE_EDITION',/g" packages/cdk/lib/construct/rag.ts
+                - sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
 
                 - cp packages/cdk/parameter.ts packages/cdk/parameter.ts.backup
                 
