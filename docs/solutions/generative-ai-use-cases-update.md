@@ -80,7 +80,7 @@ Code Editor を開き、Open を押します。Stop していた場合、Start �
 SageMaker Code Editor の画面を開けました。New Terminal を押します。  
 ![genu-update-01](../assets/images/solutions/generative-ai-use-cases-update/genu-update-01.png)
 
-Terminal 上で以下のコマンドを実行して、最新の GenU のソースコードを clone します。最新のソースコードを clone することで、GenU のバージョンアップが可能です。2 回目以降のバージョンアップで、既に git clone をしている場合は、[こちらの手順](#second-time-update)をご参照ください。
+Terminal 上で以下のコマンドを実行して、最新の GenU のソースコードを clone します。最新のソースコードを clone することで、GenU のバージョンアップが可能です。2 回目以降のバージョンアップで、既に git clone をしている場合は、[こちらの手順](#2-回目以降に-genu-をアップデートする手順)をご参照ください。
 ```shell
 git clone https://github.com/aws-samples/generative-ai-use-cases.git
 ```
@@ -173,6 +173,40 @@ fs.writeFileSync('packages/cdk/parameter.ts', content);
 パラメーターを変更してみましょう。今回の手順では、利用するモデルを変更します。  
 ![genu-update-07](../assets/images/solutions/generative-ai-use-cases-update/genu-update-07.png)
 
+次に、RAG で Kendra の Enterprise Edition を利用している方は、一部ソースコードの変更が必要です。利用しているかどうかわからない方も以下のコマンドを実行ください。  
+
+まず、Parameter Store から Kendra Edition の設定を確認します：
+
+```shell
+KENDRA_EDITION=$(aws ssm get-parameter --name "/genu/dev/kendraedition" --query "Parameter.Value" --output text 2>/dev/null || echo "NOT_FOUND")
+echo "Kendra Edition: $KENDRA_EDITION"
+```
+
+次のコマンドを実行します。Enterprise Edition を利用しているか自動的に判断し、利用している場合のみソースコードを編集します：
+
+```shell
+if [ "$KENDRA_EDITION" = "ENTERPRISE_EDITION" ]; then
+  echo "Kendra Enterprise Edition が検出されました。ソースコードを変更します..."
+  
+  # packages/cdk/lib/construct/rag.ts ファイル内の DEVELOPER_EDITION を ENTERPRISE_EDITION に変更
+  if [ -f "packages/cdk/lib/construct/rag.ts" ]; then
+    sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
+    echo "ソースコードの変更が完了しました。"
+    echo "変更されたファイル: packages/cdk/lib/construct/rag.ts"
+    echo "バックアップファイル: packages/cdk/lib/construct/rag.ts.bak"
+  else
+    echo "エラー: packages/cdk/lib/construct/rag.ts ファイルが見つかりません。"
+  fi
+else
+  echo "Kendra Enterprise Edition は利用されていません。ソースコードの変更をスキップします。"
+fi
+```
+
+!!! Note
+    このコマンドは、1 click デプロイ時に Kendra Enterprise Edition を利用した場合にのみ実行する必要があります。通常の DEVELOPER_EDITION を利用している場合は、Parameter Store に `/genu/dev/kendraedition` パラメータが存在しないため、自動的にスキップされます。
+
+
+
 依存関係を解決します。  
 ```shell
 npm ci
@@ -261,7 +295,7 @@ arn:aws:cloudformation:us-east-1:xxxxxxxxxx:stack/GenerativeAiUseCasesStackdev/8
 sagemaker-user@default:~/generative-ai-use-cases$ 
 ```
 
-## 2 回目以降に GenU をアップデートする手順 {#second-time-update}
+## 2 回目以降に GenU をアップデートする手順
 SageMaker Code Editor を利用して、2 回目以降に GenU をアップデートする手順を紹介します。1 回目では git clone を利用していたのに対して、2 回目は既に clone 済みなので手順がが変わります。  
 SageMaker Code Editor を開いたあと、Open Folder で GenU のディレクトリを開きます。
 
@@ -298,6 +332,38 @@ npm ci
 
 `parameter.ts` のファイルを編集します。先ほど退避した、`dev` や `staging` や `prod` の値を元に戻します。  
 ![genu-update-repeat-02](../assets/images/solutions/generative-ai-use-cases-update/genu-update-repeat-02.png)
+
+次に、RAG で Kendra の Enterprise Edition を利用している方は、一部ソースコードの変更が必要です。利用しているかどうかわからない方も以下のコマンドを実行ください。  
+
+まず、Parameter Store から Kendra Edition の設定を確認します：
+
+```shell
+KENDRA_EDITION=$(aws ssm get-parameter --name "/genu/dev/kendraedition" --query "Parameter.Value" --output text 2>/dev/null || echo "NOT_FOUND")
+echo "Kendra Edition: $KENDRA_EDITION"
+```
+
+次のコマンドを実行します。Enterprise Edition を利用しているか自動的に判断し、利用している場合のみソースコードを編集します：
+
+```shell
+if [ "$KENDRA_EDITION" = "ENTERPRISE_EDITION" ]; then
+  echo "Kendra Enterprise Edition が検出されました。ソースコードを変更します..."
+  
+  # packages/cdk/lib/construct/rag.ts ファイル内の DEVELOPER_EDITION を ENTERPRISE_EDITION に変更
+  if [ -f "packages/cdk/lib/construct/rag.ts" ]; then
+    sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
+    echo "ソースコードの変更が完了しました。"
+    echo "変更されたファイル: packages/cdk/lib/construct/rag.ts"
+    echo "バックアップファイル: packages/cdk/lib/construct/rag.ts.bak"
+  else
+    echo "エラー: packages/cdk/lib/construct/rag.ts ファイルが見つかりません。"
+  fi
+else
+  echo "Kendra Enterprise Edition は利用されていません。ソースコードの変更をスキップします。"
+fi
+```
+
+!!! Note
+    このコマンドは、1 click デプロイ時に Kendra Enterprise Edition を利用した場合にのみ実行する必要があります。通常の DEVELOPER_EDITION を利用している場合は、Parameter Store に `/genu/dev/kendraedition` パラメータが存在しないため、自動的にスキップされます。
 
 GenU を更新します。`env=dev` のパラメーターは、デプロイしたい Environent 名を指定します。デフォルトでは dev です。  
 

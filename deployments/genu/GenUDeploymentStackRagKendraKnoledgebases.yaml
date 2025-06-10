@@ -107,8 +107,8 @@ Resources:
               - ssm:DeleteParameter
             Effect: Allow
             Resource:
-              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/${Environment}.json"
-              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/${Environment}/kendraedition"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/dev.json"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/dev/kendraedition"
       Roles:
         - !Ref CodeBuildServiceRole
 
@@ -134,8 +134,6 @@ Resources:
             Value: dev
           - Name: ModelRegion
             Value: !Ref ModelRegion
-          - Name: AdditionalModels
-            Value: !Ref AdditionalModels
           - Name: SelfSignUp
             Value: !Ref SelfSignUp
           - Name: AllowedSignUpEmailDomains
@@ -188,15 +186,10 @@ Resources:
                   // Read the existing cdk.json file
                   const cdkJson = JSON.parse(fs.readFileSync('packages/cdk/cdk.json', 'utf8'));
 
-                  const additionalModelIds = process.env.AdditionalModels ? 
-                    process.env.AdditionalModels.split(',').map(id => id.trim()) 
-                    : [];
-
                   const envName = process.env.Environment;
                   const params = {
                     modelRegion: process.env.ModelRegion,
                     ragEnabled: true,
-                    modelIds: [...new Set([...additionalModelIds, ...cdkJson.context.modelIds])],
                     ragKnowledgeBaseEnabled: true,
                     selfSignUpEnabled: process.env.SelfSignUp === 'true',
                     allowedSignUpEmailDomains: process.env.AllowedSignUpEmailDomains ? process.env.AllowedSignUpEmailDomains.split(',').map(d => d.trim()) : null,
@@ -384,10 +377,6 @@ Resources:
 
 
 Outputs:
-  ParameterStoreName:
-    Description: Parameter Store name for GenU environment parameters
-    Value: !Sub "/genu/${Environment}.json"
-  
   NotificationTopicArn:
     Description: ARN of the SNS topic for deployment notifications
     Value: !Ref DeploymentNotificationTopic
