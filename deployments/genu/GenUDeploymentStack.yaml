@@ -17,7 +17,7 @@ Metadata:
 Parameters:
   NotificationEmailAddress:
     Type: String
-    Description: 'Email address to receive deployment notifications (test@example.co.jp)'
+    Description: 'Email address to receive deployment notifications (Example: test@example.co.jp)'
     AllowedPattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
     ConstraintDescription: Must be a valid email address
   
@@ -36,12 +36,12 @@ Parameters:
   AllowedSignUpEmailDomains:
     Type: String
     Default: ""
-    Description: Allowed email domains for signup (example.co.jp)
+    Description: 'Allowed email domains for signup (Example: example1.co.jp, example2.co.jp)'
   
   AllowedIpV4AddressRanges:
     Type: String
     Default: ""
-    Description: 'Allowed IPv4 address ranges for access (10.0.0.100/32, 192.168.0.0/24). Please check your addrress next url : https://checkip.amazonaws.com/'
+    Description: 'Allowed IPv4 address ranges for access (Example: 10.0.0.100/32, 192.168.0.0/24). Find your current Public IP address here: https://checkip.amazonaws.com/'
   
   AllowedIpV6AddressRanges:
     Type: String
@@ -49,6 +49,7 @@ Parameters:
     Description: Allowed IPv6 address ranges for access
 
 Resources:
+
   # SNS Topic for deployment notifications
   DeploymentNotificationTopic:
     Type: AWS::SNS::Topic
@@ -99,6 +100,14 @@ Resources:
               - sns:Publish
             Effect: Allow
             Resource: !Ref DeploymentNotificationTopic
+          - Action:
+              - ssm:PutParameter
+              - ssm:GetParameter
+              - ssm:GetParameters
+              - ssm:DeleteParameter
+            Effect: Allow
+            Resource:
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/${Environment}.json"
       Roles:
         - !Ref CodeBuildServiceRole
 
@@ -124,6 +133,8 @@ Resources:
             Value: dev
           - Name: ModelRegion
             Value: !Ref ModelRegion
+          - Name: AdditionalModels
+            Value: !Ref AdditionalModels
           - Name: RAGEnabled
             Value: true
           - Name: SelfSignUp
@@ -160,23 +171,32 @@ Resources:
                 - sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
 
                 - cp packages/cdk/parameter.ts packages/cdk/parameter.ts.backup
-                
-                # Create and run the parameter update script
+
+                # Create and run unified parameter script (updates parameter.ts and creates JSON for Parameter Store)
                 - |
                   cat > update-params.js << 'EOF'
                   const fs = require('fs');
-                  
+
+                  // Read the existing cdk.json file
+                  const cdkJson = JSON.parse(fs.readFileSync('packages/cdk/cdk.json', 'utf8'));
+
+                  const additionalModelIds = process.env.AdditionalModels ? 
+                    process.env.AdditionalModels.split(',').map(id => id.trim()) 
+                    : [];
+
                   const envName = process.env.Environment;
                   const params = {
                     modelRegion: process.env.ModelRegion,
                     ragEnabled: process.env.RAGEnabled === 'true',
+                    modelIds: [...new Set([...additionalModelIds, ...cdkJson.context.modelIds])],
                     ragKnowledgeBaseEnabled: process.env.RAGEnabled === 'true',
                     selfSignUpEnabled: process.env.SelfSignUp === 'true',
                     allowedSignUpEmailDomains: process.env.AllowedSignUpEmailDomains ? process.env.AllowedSignUpEmailDomains.split(',').map(d => d.trim()) : null,
                     allowedIpV4AddressRanges: process.env.AllowedIpV4AddressRanges ? process.env.AllowedIpV4AddressRanges.split(',').map(r => r.trim()) : null,
                     allowedIpV6AddressRanges: process.env.AllowedIpV6AddressRanges ? process.env.AllowedIpV6AddressRanges.split(',').map(r => r.trim()) : null
                   };
-  
+
+                  // Update parameter.ts file
                   try {
                     let content = fs.readFileSync('packages/cdk/parameter.ts', 'utf8');
                     const envRegex = new RegExp(`(${envName}\\s*:\\s*{)[^}]*(})`, 'g');
@@ -191,12 +211,34 @@ Resources:
                       process.exit(1);
                     }
                   } catch (error) {
-                    console.error('Error:', error);
+                    console.error('Error updating parameter.ts:', error);
                     process.exit(1);
                   }
+
+                  // Create JSON file for Parameter Store
+                  fs.writeFileSync('env-params.json', JSON.stringify(params, null, 2));
+                  console.log('Environment parameters JSON created:');
+                  console.log(JSON.stringify(params, null, 2));
                   EOF
                   
                   node update-params.js
+                  
+                  # Store the JSON as a single parameter with SecureString type
+                  aws ssm put-parameter --name "/genu/${Environment}.json" \
+                    --value "$(cat env-params.json)" \
+                    --type "SecureString" \
+                    --overwrite || exit 1
+                  
+                  # Add tags to the parameter (separate command due to AWS limitation)
+                  aws ssm add-tags-to-resource \
+                    --resource-type "Parameter" \
+                    --resource-id "/genu/${Environment}.json" \
+                    --tags "Key=Environment,Value=${Environment}" "Key=Application,Value=GenU" || true
+                  
+                  # Verify the parameter was stored
+                  aws ssm get-parameter --name "/genu/${Environment}.json" --query 'Parameter.Name' || exit 1
+                  
+                  echo "Parameters stored successfully in Parameter Store as /genu/${Environment}.json"
 
             build:
               commands:
@@ -229,10 +271,18 @@ Resources:
                   Deployment Time: $(date '+%Y-%m-%d %H:%M:%S')
 
                   Login URL: ${APP_URL}
-                  User Registration URL: ${USER_CREATION_URL}
-                  User Registration Guide : https://catalog.workshops.aws/generative-ai-use-cases-jp/ja-JP/disable-self-signup/create-account
 
+                  Important Next Steps:
+                  1. Please enable model access on Amazon Bedrock:
+                     https://${AWS_ACCOUNT_ID}.${ModelRegion}.console.aws.amazon.com/bedrock/home?region=${ModelRegion}#/modelaccess
+                  
+                  2. Please create a user in the Cognito User Pool to access the application (if self-signup disabled):
+                     ${USER_CREATION_URL}
+                     User Registration Guide : https://catalog.workshops.aws/generative-ai-use-cases-jp/ja-JP/disable-self-signup/create-account
+
+                  Configuration:
                   Environment: ${Environment}
+                  Model Region: ${ModelRegion}
                   RAG Enabled: ${RAGEnabled}
                   Self-Signup Enabled: ${SelfSignUp}
                   Allowed SignUp Email Domains: ${AllowedSignUpEmailDomains}
@@ -242,6 +292,7 @@ Resources:
                   Stack Details:
                   Stack Name: ${STACK_NAME}
                   Region: ${AWS_DEFAULT_REGION}
+
                   EOF
 
             post_build:
@@ -252,7 +303,7 @@ Resources:
           artifacts:
             files:
               - deployment-info.txt
-      TimeoutInMinutes: 300
+      TimeoutInMinutes: 120
 
   # Custom Resource to trigger CodeBuild
   DeploymentTrigger:
@@ -270,7 +321,6 @@ Resources:
       Role: !GetAtt TriggerFunctionRole.Arn
       Runtime: nodejs20.x
       Timeout: 30
-      ReservedConcurrentExecutions: 5
       Code:
         ZipFile: |
           const { CodeBuildClient, StartBuildCommand } = require('@aws-sdk/client-codebuild');
@@ -325,7 +375,12 @@ Resources:
                 Action: codebuild:StartBuild
                 Resource: !GetAtt GenUDeploymentProject.Arn
 
+
 Outputs:
+  ParameterStoreName:
+    Description: Parameter Store name for GenU environment parameters
+    Value: !Sub "/genu/${Environment}.json"
+  
   NotificationTopicArn:
     Description: ARN of the SNS topic for deployment notifications
     Value: !Ref DeploymentNotificationTopic

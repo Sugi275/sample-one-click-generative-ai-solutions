@@ -10,7 +10,7 @@ Web Site : https://aws-samples.github.io/sample-one-click-generative-ai-solution
 
 [Generative AI Use Cases](https://github.com/aws-samples/generative-ai-use-cases-jp) は、生成 AI の様々なユースケースがあらかじめ組み込まれたアプリケーションです。生成 AI の活用をこれから社内に普及するにあたり、安全かつ誰もが容易に使える環境を構築したい場合に最適です。
 
- [![](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=GenUDeploymentProcess&templateURL=https://aws-ml-jp.s3.ap-northeast-1.amazonaws.com/asset-deployments/GenUDeploymentProcess.yaml) 
+ [![](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://ap-northeast-1.console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=GenUDeploymentStack&templateURL=https://aws-ml-jp.s3.ap-northeast-1.amazonaws.com/asset-deployments/GenUDeploymentStack.yaml) 
 
 ### Parameters
 
@@ -35,11 +35,15 @@ Web Site : https://aws-samples.github.io/sample-one-click-generative-ai-solution
 
 `AllowedIpV4AddressRanges` や `AllowedIpV6AddressRanges` を用いて、できるだけ IP 制限をかけることを推奨します。 IP 制限を書けない場合は Public Access 可能な状態でデプロイされますが、SelfSignUp は false にしているためログインには AWS アカウントでのユーザー作成 (Amazon Cognito) が必要です。
 
+### デプロイ後のアップデートとパラメーター変更の手順
+GenU を 1 click でデプロイしたあとに、GenU のアップデートやパラメーター変更を行う方法を紹介します。[詳細はこちらをご覧ください。](/docs/solutions/generative-ai-use-cases-update.md)
+
+
 ## Dify on AWS
 
 [Dify](https://dify.ai/jp) は、生成 AI を用いたチャットボットやワークフローを GUI で作成することが出来ます。複数ステップにまたがる生成 AI の処理等を実装したい時に最適です。 AWS へのデプロイに当たっては [dify-self-hosted-on-aws](https://github.com/aws-samples/dify-self-hosted-on-aws) を使うことで容易に配置できます。
 
- [![](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=DifyDeploymentProcess&templateURL=https://aws-ml-jp.s3.ap-northeast-1.amazonaws.com/asset-deployments/DifyDeploymentProcess.yaml)
+ [![](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=DifyDeploymentStack&templateURL=https://aws-ml-jp.s3.ap-northeast-1.amazonaws.com/asset-deployments/DifyDeploymentStack.yaml)
 
 ### Parameters
 
@@ -54,9 +58,30 @@ Web Site : https://aws-samples.github.io/sample-one-click-generative-ai-solution
 * AllowedIpV6Ciders
    * 接続可能な IpV6 Cider です (::/1 など)
 
-### [Bedrock Claude Chat](https://github.com/aws-samples/dify-self-hosted-on-aws)
+## Bedrock Chat (BrChat)
 
-Comming Soon
+[Bedrock Chat](https://github.com/aws-samples/bedrock-chat) は、Amazon Bedrock を活用した多言語対応の生成 AI プラットフォームです。シンプルなチャット機能だけでなく、ナレッジベース (RAG) を活用したカスタムボット作成、ボットストアを通じたボット共有、エージェント機能によるタスク自動化をサポートしています。生成 AI の特性を理解し、実践的に活用したい場合に最適です。
+
+ [![](https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png)](https://us-east-1.console.aws.amazon.com/cloudformation/home#/stacks/create/review?stackName=BrChatDeploymentStack&templateURL=https://aws-ml-jp.s3.ap-northeast-1.amazonaws.com/asset-deployments/BrChatDeploymentStack.yaml)
+
+### Parameters
+
+* NotificationEmailAddress
+   * デプロイの開始・終了を通知するメールアドレスです。
+* BedrockRegion
+   * Amazon Bedrock のモデルを利用するリージョンです（us-east-1, us-west-2, ap-northeast-1）
+* SelfSignUp (default: false)
+   * セルフサインアップの有効 / 無効を切り替えます。
+* AllowedSignUpEmailDomains
+   * カンマ区切りで利用可能なメールドメインを設定します
+* AllowedIpV4AddressRanges
+   * アクセス可能な IP アドレスを指定 (IPv4)
+* AllowedIpV6AddressRanges
+   * アクセス可能な IP アドレスを指定 (IPv6)
+* EnableRagReplicas (default: false)
+   * RAG データベースのレプリカを有効化します（可用性が向上しますがコストも増加します）
+* Version (default: v3)
+   * デプロイする Bedrock Chat のバージョンを指定します
 
 
 ## Technical Background
