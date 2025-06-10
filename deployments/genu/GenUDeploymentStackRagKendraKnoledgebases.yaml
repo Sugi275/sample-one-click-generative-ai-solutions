@@ -108,6 +108,7 @@ Resources:
             Effect: Allow
             Resource:
               - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/${Environment}.json"
+              - !Sub "arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/genu/${Environment}/kendraedition"
       Roles:
         - !Ref CodeBuildServiceRole
 
@@ -135,8 +136,6 @@ Resources:
             Value: !Ref ModelRegion
           - Name: AdditionalModels
             Value: !Ref AdditionalModels
-          - Name: RAGEnabled
-            Value: true
           - Name: SelfSignUp
             Value: !Ref SelfSignUp
           - Name: AllowedSignUpEmailDomains
@@ -170,6 +169,15 @@ Resources:
                 # Change Kendra Edition from DEVELOPER_EDITION to ENTERPRISE_EDITION
                 - sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
 
+                # Store Kendra Edition in Parameter Store
+                - |
+                  aws ssm put-parameter --name "/genu/${Environment}/kendraedition" \
+                    --value "ENTERPRISE_EDITION" \
+                    --type "String" \
+                    --overwrite || exit 1
+                  
+                  echo "Kendra Edition (ENTERPRISE_EDITION) stored in Parameter Store as /genu/${Environment}/kendraedition"
+
                 - cp packages/cdk/parameter.ts packages/cdk/parameter.ts.backup
 
                 # Create and run unified parameter script (updates parameter.ts and creates JSON for Parameter Store)
@@ -187,9 +195,9 @@ Resources:
                   const envName = process.env.Environment;
                   const params = {
                     modelRegion: process.env.ModelRegion,
-                    ragEnabled: process.env.RAGEnabled === 'true',
+                    ragEnabled: true,
                     modelIds: [...new Set([...additionalModelIds, ...cdkJson.context.modelIds])],
-                    ragKnowledgeBaseEnabled: process.env.RAGEnabled === 'true',
+                    ragKnowledgeBaseEnabled: true,
                     selfSignUpEnabled: process.env.SelfSignUp === 'true',
                     allowedSignUpEmailDomains: process.env.AllowedSignUpEmailDomains ? process.env.AllowedSignUpEmailDomains.split(',').map(d => d.trim()) : null,
                     allowedIpV4AddressRanges: process.env.AllowedIpV4AddressRanges ? process.env.AllowedIpV4AddressRanges.split(',').map(r => r.trim()) : null,
@@ -283,7 +291,6 @@ Resources:
                   Configuration:
                   Environment: ${Environment}
                   Model Region: ${ModelRegion}
-                  RAG Enabled: ${RAGEnabled}
                   Self-Signup Enabled: ${SelfSignUp}
                   Allowed SignUp Email Domains: ${AllowedSignUpEmailDomains}
                   Allowed IpV4 Address Ranges: ${AllowedIpV4AddressRanges}
