@@ -164,17 +164,14 @@ Resources:
               commands:
                 - cd $CODEBUILD_SRC_DIR/generative-ai-use-cases
 
-                # Change Kendra Edition from DEVELOPER_EDITION to ENTERPRISE_EDITION
-                - sed -i.bak "s/DEVELOPER_EDITION/ENTERPRISE_EDITION/g" packages/cdk/lib/construct/rag.ts
-
                 # Store Kendra Edition in Parameter Store
                 - |
                   aws ssm put-parameter --name "/genu/${Environment}/kendraedition" \
-                    --value "ENTERPRISE_EDITION" \
+                    --value "NO_KENDRA" \
                     --type "String" \
                     --overwrite || exit 1
                   
-                  echo "Kendra Edition (ENTERPRISE_EDITION) stored in Parameter Store as /genu/${Environment}/kendraedition"
+                  echo "Kendra Edition (NO_KENDRA) stored in Parameter Store as /genu/${Environment}/kendraedition"
 
                 - cp packages/cdk/parameter.ts packages/cdk/parameter.ts.backup
 
